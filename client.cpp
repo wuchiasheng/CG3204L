@@ -1,5 +1,5 @@
 //
-//  main.cpp
+//  client.cpp
 //  cg3204
 //
 //  Created by Wu Chia Sheng on 21/3/14.
@@ -56,72 +56,72 @@ int main()
     // Client socket descriptor which is just integer number used to access a socket
     int socketnumber;
     struct sockaddr_in serveradd;
- 
+    
     string serverip;
     // Structure from netdb.h file used for determining host name from local host's ip address
     struct hostent *server;
-
+    
     printf("=== Welcome to the chat client!! ===\n");
     printf("Enter chat server IP: ");
-   // cin>>serverip;
+    // cin>>serverip;
     printf("Enter chat server port: ");
-   // cin>>portnumber;
+    // cin>>portnumber;
     //printhelpcommand();
     //commandValidation();
-   
+    
     serverip="127.0.0.1";
     portnumber =4321;
     
-     // Create socket of domain - Internet (IP) address, type - Stream based (TCP) and protocol unspecified
-     // since it is only useful when underlying stack allows more than one protocol and we are choosing one.
-     // 0 means choose the default protocol.
-     
-     bzero((char *)&serveradd, sizeof(serveradd));
-     
-     //server = gethostbyname("127.0.0.1");
-     server = gethostbyname(serverip.c_str());
-     
-     if(server == NULL)
-     {
-     printf("Failed finding server name\n");
-     return -1;
-     }
-     
-     serveradd.sin_family = AF_INET;
-     
-     // 16 bit port number on which server listens
-     // The function htons (host to network short) ensures that an integer is
-     // interpreted correctly (whether little endian or big endian) even if client and
-     // server have different architectures
-     
-     serveradd.sin_port = htons(portnumber);
-     
-     //  for(int i =0;i<5;i++) //for troubleshooting the pthread
-     //  {
-     
-     socketnumber = socket(AF_INET, SOCK_STREAM, 0);
-     
-     if(socketnumber < 0)
-     printf("Failed creating socket\n");
-     
-     if (connect(socketnumber, (struct sockaddr *)&serveradd, sizeof(serveradd)) < 0)
-     {
-     printf("Failed to connect to server\n");
-     return -1;
-     }
-     else
-     printf("Connected successfully \n");
-     //} //for troubleshooting the pthread
-     unsigned clientlen=sizeof(clientadd);
-     getsockname(socketnumber,(struct sockaddr *)&clientadd,&clientlen);
- 
-     login(socketnumber);
-     close(socketnumber);
+    // Create socket of domain - Internet (IP) address, type - Stream based (TCP) and protocol unspecified
+    // since it is only useful when underlying stack allows more than one protocol and we are choosing one.
+    // 0 means choose the default protocol.
+    
+    bzero((char *)&serveradd, sizeof(serveradd));
+    
+    //server = gethostbyname("127.0.0.1");
+    server = gethostbyname(serverip.c_str());
+    
+    if(server == NULL)
+    {
+        printf("Failed finding server name\n");
+        return -1;
+    }
+    
+    serveradd.sin_family = AF_INET;
+    
+    // 16 bit port number on which server listens
+    // The function htons (host to network short) ensures that an integer is
+    // interpreted correctly (whether little endian or big endian) even if client and
+    // server have different architectures
+    
+    serveradd.sin_port = htons(portnumber);
+    
+    //  for(int i =0;i<5;i++) //for troubleshooting the pthread
+    //  {
+    
+    socketnumber = socket(AF_INET, SOCK_STREAM, 0);
+    
+    if(socketnumber < 0)
+        printf("Failed creating socket\n");
+    
+    if (connect(socketnumber, (struct sockaddr *)&serveradd, sizeof(serveradd)) < 0)
+    {
+        printf("Failed to connect to server\n");
+        return -1;
+    }
+    else
+        printf("Connected successfully \n");
+    //} //for troubleshooting the pthread
+    unsigned clientlen=sizeof(clientadd);
+    getsockname(socketnumber,(struct sockaddr *)&clientadd,&clientlen);
+    
+    login(socketnumber);
+    close(socketnumber);
 	return 0;
 }
 void login(int socketnumber)
 {
-
+    
     string username;
     string commandstring;
     struct PACKET packet;
@@ -142,7 +142,7 @@ void login(int socketnumber)
     
     while (1) {
         char buf[SIZE]={0};
-   
+        
         FD_CLR(socketnumber, &readfds);
         FD_SET(socketnumber, &readfds);
         FD_SET(STDIN, &readfds);
@@ -188,8 +188,8 @@ void login(int socketnumber)
         }
     }
     close(socketnumber);
-
-   
+    
+    
     
 }
 void printhelpcommand(void)
@@ -204,38 +204,38 @@ void printhelpcommand(void)
     cout<<"8. exit\n";
 }
 /*
-void commandValidation(PACKET &packet)
-{
-    string inputCommand;
-    string load;
-    int match =0;
-    int exitFlag=0;
-    do{
-        cin>>inputCommand;
-        
-        if(inputCommand.compare("talk")==match){
-            packet.command="talk";
-            cin>>load;
-            packet.arguments.push_back(load);
-            
-        }
-    
-    
-        else if(inputCommand.compare("yell")==match){
-            cout<<"yell";
-        }
-    
-        else if(inputCommand.compare("creategroup")==match){
-            createGroup();
-        }
-    
-        else if(inputCommand.compare("exit")==match){
-            exitFlag=1;
-            cout<<"Exit"<<endl;
-        }
-    }while(exitFlag!=1);
-}
-*/
+ void commandValidation(PACKET &packet)
+ {
+ string inputCommand;
+ string load;
+ int match =0;
+ int exitFlag=0;
+ do{
+ cin>>inputCommand;
+ 
+ if(inputCommand.compare("talk")==match){
+ packet.command="talk";
+ cin>>load;
+ packet.arguments.push_back(load);
+ 
+ }
+ 
+ 
+ else if(inputCommand.compare("yell")==match){
+ cout<<"yell";
+ }
+ 
+ else if(inputCommand.compare("creategroup")==match){
+ createGroup();
+ }
+ 
+ else if(inputCommand.compare("exit")==match){
+ exitFlag=1;
+ cout<<"Exit"<<endl;
+ }
+ }while(exitFlag!=1);
+ }
+ */
 void createGroup(){
     
     string test;
@@ -246,7 +246,7 @@ void createGroup(){
     
     getline(cin,test);
     stringstream ss(test);
-
+    
     do{
         
         getline(ss,test2, ' '); //seperate the name with the first name and last name using space
@@ -270,8 +270,8 @@ bool isClear(string s)
 {
     int i;
     for(i=0;i<s.length();i++){
-    if(isalpha(s[i]))
-        return false;
+        if(isalpha(s[i]))
+            return false;
     }
     return true;
 }
