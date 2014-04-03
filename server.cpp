@@ -30,6 +30,7 @@ struct clientInfo {
     string name; // client's alias
     int grpNumber;//group number joined
     string grpCreator;//creator's name of the group chat joined
+    int portNumber;
     
 };
 
@@ -75,7 +76,7 @@ int main(int argc, char** argv) {
     //socketnumber for socket. acceptnumber for listening number
     
     //2 socket address structure one for server one for client
-    //createGroup("panda", "bear bird\n");
+    //createGroup("panda", " panda bear dog\n");
     //    char message[1000];
     int portnumber;
     printf("=== welcome to the chat server!!===\n");
@@ -109,9 +110,7 @@ int main(int argc, char** argv) {
     //server start listening, enable the program to halt on accept calls
     //wait until a client connects , request them all in queue.number of request held pending
     listen(socketnumber,1024);
-    
-    printf("waiting for connection.....\n");
-    
+    cout<<"chat server running on "<<"127.0.0.1:"<<portnumber<<endl;
     clientlen=sizeof(clientadd);
     
     //server block on this call until a client tries to establish the connection.
@@ -137,8 +136,8 @@ void* listener(void* listensocket)
     {
         acceptNumber=accept(socketnumber,(struct sockaddr *)&clientadd,&clientlen);
         info.sockfd=acceptNumber;
+        info.portNumber=ntohs(clientadd.sin_port);
         pthread_create(&info.threadID,NULL,&serviceclient,(void*)&info);
-        
     }
     while(true);
 }
@@ -154,7 +153,7 @@ void *serviceclient(void* fd)
     recv(socket,(void *)buffer,50,0);
     string username(buffer);
     
-    cout<<username<<" is connected to the server with "<<socket<< "\n"<<flush;
+    cout<<"Client "<<username<<" connected from 127.0.0.1:"<<info.portNumber<<"\n";
     info.name=username;
     info.grpNumber=-1;
     pthread_mutex_lock(&clientListMutex);
@@ -166,8 +165,9 @@ void *serviceclient(void* fd)
         recv(info.sockfd, (void *)&packet, sizeof(struct PACKET), 0);
         string instruction(packet.command);
         string load(packet.arguments);
-        cout<<instruction<<endl;
-        commandValidation(username,instruction,load,socket);
+        //cout<<instruction<<endl;
+        if(commandValidation(username,instruction,load,socket)==false)
+            break;
         
     }
     
@@ -188,7 +188,7 @@ void *clientConfirmation(void* fd)
     
     confirmationMessage="You received an invitation from "+info.grpCreator+"|y/n ?|\n";
     sendInstruction = "confirmation";
-    cout<<"Socket number:"<<socket<<endl;
+    //cout<<"Socket number:"<<socket<<endl;
     //send confirmation query to client
     strcpy(sendPacket.arguments,confirmationMessage.c_str());
     strcpy(sendPacket.command,sendInstruction.c_str());
@@ -223,7 +223,7 @@ void createGroup(string creator,string message){
     do{
         getline(ss,grpMember,' '); //seperate the name with the first name and last name using space
         f=grpList.find(grpMember);
-        cout<<"::"<<grpMember<<"::"<<endl;
+        //cout<<"::"<<grpMember<<"::"<<endl;
         grpList=grpList.replace(f,grpMember.length(),"");
         if(!isClear(grpMember))
         {
@@ -235,26 +235,34 @@ void createGroup(string creator,string message){
     }while(!isClear(grpList));
     pthread_mutex_unlock(&grpNameMutex);
     
+    cout<<"Client "<<creator<<" requests group chat of {";
+    for(i=0;i<invitedNameGroup.size();i++){
+        if(i!=invitedNameGroup.size()-1)
+            cout<<invitedNameGroup.at(i)<<", ";
+        else
+            cout<<invitedNameGroup.at(i)<<"}"<<endl;
+    }
+    
     
     //matching of name requested to be added into group with connected clients
     pthread_mutex_lock(&clientListMutex);
     invitedClientGroup.clear();
     for(i=0;i<invitedNameGroup.size();i++){
         for(j=0;j<clientList.size();j++){
-            cout<<"Comparing:"<<clientList.at(j).name<<"with"<<invitedNameGroup.at(i)<<endl;
+            //cout<<"Comparing:"<<clientList.at(j).name<<"with"<<invitedNameGroup.at(i)<<endl;
             
             if(invitedNameGroup.at(i).compare(clientList.at(j).name)==0){
-                cout<<"match"<<endl;
+                //cout<<"match"<<endl;
                 if(clientList.at(j).grpNumber==-1){
                     clientList.at(j).grpCreator=creator;
                     invitedClientGroup.push_back(clientList.at(j));
                 }
-                else
-                    cout<<clientList.at(j).name<<" has joined a group"<<endl;
+                //else
+                //cout<<clientList.at(j).name<<" has joined a group"<<endl;
                 break;
             }
-            else
-                cout<<invitedNameGroup.at(i)<<" is not connected to the server"<<endl;
+            //else
+            // cout<<invitedNameGroup.at(i)<<" is not connected to the server"<<endl;
         }
     }
     pthread_mutex_unlock(&clientListMutex);
@@ -298,11 +306,11 @@ void confirmationValidation(string userName,string confirmation){
     int i;
     int grpNumber;
     
-    cout<<"reply from "<<userName<<confirmation<<endl;
+    //cout<<"reply from "<<userName<<confirmation<<endl;
     
     //validate reply whether it is acceptance or rejection
     if(confirmation.compare("y\n")==0){
-        cout<<"Accepted group invitation from "<<userName<<endl;
+        cout<<"Client "<<userName<<" accepts the group chat request"<<endl;
         acceptanceMessage = "Client " + userName + " accepts the group chat request\n";
         strcpy(confirmPacket.arguments,acceptanceMessage.c_str());
         
@@ -312,7 +320,7 @@ void confirmationValidation(string userName,string confirmation){
             if(clientList.at(i).name.compare(userName)==0){
                 pthread_mutex_lock(&grpListMutex);
                 grpNumber = (int)groupList.size()-1.0;
-                cout<<"Join group number ="<<grpNumber<<endl;
+                //cout<<"Join group number ="<<grpNumber<<endl;
                 clientList.at(i).grpNumber=grpNumber;
                 groupList.at(grpNumber).push_back(clientList.at(i));
                 pthread_mutex_unlock(&grpListMutex);
@@ -323,7 +331,7 @@ void confirmationValidation(string userName,string confirmation){
         
     }
     else{
-        cout<<"Declined group invitation from "<<userName<<endl;
+        cout<<"Client "<<userName<<" rejects the group chat request"<<endl;
         rejectionMessage = "Client " + userName + " rejects the group chat request\n";
         strcpy(confirmPacket.arguments,rejectionMessage.c_str());
     }
@@ -349,9 +357,10 @@ bool commandValidation(string userName,string command,string message,int clientS
     string rawMessage;
     string finalMessage;
     struct PACKET sendPacket;
+    struct clientInfo client;
     
     int i,j;
-    cout<<"from client:"<<command<<" "<<message<<endl;
+    //cout<<"from client:"<<command<<" "<<message<<endl;
     //operation 1 - talk
     if(command.compare("talk")==match){
         
@@ -362,7 +371,7 @@ bool commandValidation(string userName,string command,string message,int clientS
         f=rawMessage.find(receiverName);
         rawMessage=rawMessage.replace(f,receiverName.length(),"");
         
-        cout<<"talk to "<<receiverName<<" : "<<rawMessage<<endl;
+        //cout<<"talk to "<<receiverName<<" : "<<rawMessage<<endl;
         
         //retrieving client sockfd
         pthread_mutex_lock(&clientListMutex);
@@ -378,7 +387,7 @@ bool commandValidation(string userName,string command,string message,int clientS
         
         if(sockfd!=-1){
             send(sockfd,(void *)&sendPacket,sizeof(struct PACKET), 0);
-            cout<<"sent"<<endl;
+            //cout<<"sent"<<endl;
         }
         else
             cout<<"no matching name"<<endl;
@@ -387,7 +396,6 @@ bool commandValidation(string userName,string command,string message,int clientS
     //operation 2 - yell
     else if(command.compare("yell")==match){
         
-        cout<<"yell";
         finalMessage =userName+" says:"+message;
         strcpy(sendPacket.arguments,finalMessage.c_str());
         pthread_mutex_lock(&clientListMutex);
@@ -428,7 +436,7 @@ bool commandValidation(string userName,string command,string message,int clientS
     //operation 3 - creategroup
     else if(command.compare("creategroup")==match){
         
-        cout<<"creategroup"<<endl;
+        //cout<<"creategroup"<<endl;
         createGroup(userName,message);
     }
     
@@ -440,7 +448,7 @@ bool commandValidation(string userName,string command,string message,int clientS
                 grpNumber = clientList.at(i).grpNumber;
         }
         pthread_mutex_unlock(&clientListMutex);
-        cout<<"groupnumber:"<<grpNumber<<endl;
+        //cout<<"groupnumber:"<<grpNumber<<endl;
         //compose message only client is in the group
         if(grpNumber>=0){
             finalMessage = userName + " says: " + message;
@@ -460,34 +468,39 @@ bool commandValidation(string userName,string command,string message,int clientS
             pthread_mutex_unlock(&grpListMutex);
         }
         else{
-            cout<<"You are not in a group chat"<<endl;
+            // cout<<"You are not in a group chat"<<endl;
         }
         
     }
     //operation - exit
     else if(command.compare("exit\n")==match){
-        cout<<"Finally exit"<<endl;
+        //cout<<"Finally exit"<<endl;
         
         //retrieving client sockfd to give exit notification
         pthread_mutex_lock(&clientListMutex);
         for(i=0;i<clientList.size();i++){
-            if(clientList.at(i).name.compare(userName)==0)
-                finalMessage="You have logged out\n";
-            
-            else
-                finalMessage=userName + " has logged out\n";
-            
-            sockfd=clientList.at(i).sockfd;
-            
-            pthread_mutex_unlock(&clientListMutex);
-            
-            strcpy(sendPacket.arguments,finalMessage.c_str());
-            
-            if(sockfd!=-1){
-                send(sockfd,(void *)&sendPacket,sizeof(struct PACKET), 0);
+            if(clientList.at(i).name.compare(userName)==0){
+                //finalMessage="You have logged out\n";
+                client =clientList.at(i);
+                pthread_kill(client.threadID,0);
+                close(client.sockfd);
             }
-            
+            else{
+                finalMessage=userName + " has logged out\n";
+                
+                sockfd=clientList.at(i).sockfd;
+                
+                pthread_mutex_unlock(&clientListMutex);
+                
+                strcpy(sendPacket.arguments,finalMessage.c_str());
+                
+                if(sockfd!=-1){
+                    send(sockfd,(void *)&sendPacket,sizeof(struct PACKET), 0);
+                }
+            }
         }
+        
+        cout<<"Client "<<client.name<<" exited from 127.0.0.1:"<<client.portNumber<<endl;
         
         //remove client from connected client list
         pthread_mutex_lock(&clientListMutex);
@@ -510,78 +523,90 @@ bool commandValidation(string userName,string command,string message,int clientS
         
         //remove client from group if client is in the group
         //remove client from connected client list
-        pthread_mutex_lock(&grpConfirmListMutex);
-        for(i=0;i<confirmClientGroup.size();i++){
-            if(confirmClientGroup.at(i).name.compare(userName)==match){
-                //client at the back of vector
-                if(i==confirmClientGroup.size()-1)
-                    confirmClientGroup.pop_back();
-                //delete client that left from the vector
-                else{
-                    for( j=i;j<confirmClientGroup.size()-1;j++){
-                        confirmClientGroup.at(j)=confirmClientGroup.at(j+1);
+        pthread_mutex_lock(&grpListMutex);
+        if(client.grpNumber>=0){
+            for(i=0;i<groupList.at(client.grpNumber).size();i++){
+                if(groupList.at(client.grpNumber).at(i).name.compare(userName)==match){
+                    //client at the back of vector
+                    if(i==groupList.at(client.grpNumber).size()-1)
+                        groupList.at(client.grpNumber).pop_back();
+                    //delete client that left from the vector
+                    else{
+                        for(j=i;j<groupList.at(client.grpNumber).size()-1;j++){
+                            groupList.at(client.grpNumber).at(j)=groupList.at(client.grpNumber).at(j+1);
+                        }
+                        groupList.at(client.grpNumber).pop_back();
                     }
-                    confirmClientGroup.pop_back();
+                    
                 }
-                
             }
+            pthread_mutex_unlock(&grpListMutex);
+            
+            
         }
-        pthread_mutex_unlock(&grpConfirmListMutex);
-        
         
         return false;
     }
-    
     //operation - leavegroup
     else if(command.compare("leavegroup\n")==match){
-        cout<<"Leave group"<<endl;
+        cout<<"Client "<<userName<<" leaves group chat"<<endl;
         
-        //retrieving client sockfd to give exit notification
-        pthread_mutex_lock(&grpConfirmListMutex);
-        for(i=0;i<confirmClientGroup.size();i++){
-            if(confirmClientGroup.at(i).name.compare(userName)==0)
-                finalMessage="You have left the group chat\n";
-            
-            else
-                finalMessage=userName + " has left the group chat\n";
-            
-            sockfd=confirmClientGroup.at(i).sockfd;
-            
-            pthread_mutex_unlock(&grpConfirmListMutex);
-            
-            strcpy(sendPacket.arguments,finalMessage.c_str());
-            
-            if(sockfd!=-1){
-                send(sockfd,(void *)&sendPacket,sizeof(struct PACKET), 0);
+        for(i=0;i<clientList.size();i++){
+            if(clientList.at(i).name.compare(userName)==0){
+                client=clientList.at(i);
+                clientList.at(i).grpNumber=-1;
+                break;
             }
-            
         }
         
-        //remove client from group if client is in the group
-        //remove client from connected client list
-        pthread_mutex_lock(&grpConfirmListMutex);
-        for(i=0;i<confirmClientGroup.size();i++){
-            if(confirmClientGroup.at(i).name.compare(userName)==match){
-                //client at the back of vector
-                if(i==confirmClientGroup.size()-1)
-                    confirmClientGroup.pop_back();
-                //delete client that left from the vector
-                else{
-                    for( j=i;j<confirmClientGroup.size()-1;j++){
-                        confirmClientGroup.at(j)=confirmClientGroup.at(j+1);
-                    }
-                    confirmClientGroup.pop_back();
+        if(client.grpNumber>=0){
+            //retrieving client sockfd to give exit notification
+            pthread_mutex_lock(&grpListMutex);
+            for(i=0;i<groupList.at(client.grpNumber).size();i++){
+                if(groupList.at(client.grpNumber).at(i).name.compare(userName)==0)
+                    finalMessage="You have left the group chat\n";
+                
+                else
+                    finalMessage=userName + " has left the group chat\n";
+                
+                sockfd=groupList.at(client.grpNumber).at(i).sockfd;
+                
+                pthread_mutex_unlock(&grpListMutex);
+                
+                strcpy(sendPacket.arguments,finalMessage.c_str());
+                
+                if(sockfd!=-1){
+                    send(sockfd,(void *)&sendPacket,sizeof(struct PACKET), 0);
                 }
                 
             }
+            
+            //remove client from group if client is in the group
+            //remove client from connected client list
+            pthread_mutex_lock(&grpListMutex);
+            for(i=0;i<groupList.at(client.grpNumber).size();i++){
+                if(groupList.at(client.grpNumber).at(i).name.compare(userName)==match){
+                    //client at the back of vector
+                    if(i==groupList.at(client.grpNumber).size()-1)
+                        groupList.at(client.grpNumber).pop_back();
+                    //delete client that left from the vector
+                    else{
+                        for( j=i;j<groupList.at(client.grpNumber).size()-1;j++){
+                            groupList.at(client.grpNumber).at(j)=groupList.at(client.grpNumber).at(j+1);
+                        }
+                        groupList.at(client.grpNumber).pop_back();
+                    }
+                    
+                }
+            }
+            pthread_mutex_unlock(&grpListMutex);
+            
         }
-        pthread_mutex_unlock(&grpConfirmListMutex);
-        
     }
     
     //operation 5 - confirmation
-    else
-        confirmationValidation(userName,command);
+    else if(command.compare("confirmation")==match)
+        confirmationValidation(userName,message);
     
     return true;
 }

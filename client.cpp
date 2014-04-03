@@ -126,8 +126,8 @@ void login(int socketnumber)
     string commandstring;
     struct PACKET packet;
     struct PACKET recvPacket;
-    char replyfromserverbuffer[50]={0};
     
+    int invitationFlag=0;
     
     fd_set readfds;
     
@@ -148,6 +148,8 @@ void login(int socketnumber)
         FD_SET(STDIN, &readfds);
         int i=0;
         int j=0;
+        string confirmation="confirmation";
+        
         for(i=0;i<20;i++)
         {
             packet.command[i]=0;
@@ -166,25 +168,52 @@ void login(int socketnumber)
             i=0;
             j=0;
             read(0,buf,SIZE);
-            while(buf[i]!='\0' && buf[i]!=' '){
-                packet.command[j]=buf[i];
+            // no inviation command = command
+            if(invitationFlag==0){
+                while(buf[i]!='\0' && buf[i]!=' '){
+                    packet.command[j]=buf[i];
+                    i++;
+                    j++;
+                }
                 i++;
-                j++;
+                j=0;
+                while(buf[i]!='\0'){
+                    packet.arguments[j]=buf[i];
+                    i++;
+                    j++;
+                }
             }
-            i++;
-            j=0;
-            while(buf[i]!='\0'){
-                packet.arguments[j]=buf[i];
-                i++;
-                j++;
+            //invitation arguments=command
+            else{
+                invitationFlag=0;
+                
+                strcpy(packet.command,confirmation.c_str());
+                while(buf[i]!='\0'){
+                    packet.arguments[j]=buf[i];
+                    i++;
+                    j++;
+                }
+                
             }
+            
+            string checkInputCommand(packet.command);
+            
             send(socketnumber,(void *)&packet,sizeof(struct PACKET),0);
+            if(checkInputCommand.compare("exit\n")==0){
+                cout<<"You have logged out"<<endl;
+                break;
+            }
             
         }else if (FD_ISSET(socketnumber, &readfds)) {
             recv(socketnumber,(void *)&recvPacket, sizeof(struct PACKET), 0);
             string message(recvPacket.arguments);
             string instruction(recvPacket.command);
             cout<<">>"<<message;
+            
+            //receive invitation
+            if(instruction.compare("confirmation")==0){
+                invitationFlag=1;
+            }
         }
     }
     close(socketnumber);
